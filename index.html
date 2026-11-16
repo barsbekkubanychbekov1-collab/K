@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>html,body{margin:0;height:100%}</style></head><body>
+<title>Кирпичики</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;600&family=Unbounded:wght@600;700&display=swap" media="print" onload="this.media='all'">
+<style>
+/* Layout: one centered night-sky playfield, control row and a short footer beneath it. Single committed dark look. */
+:root {
+  --night: #0b1622;
+  --card: #14293a;
+  --glow: #f4d35e;
+  --mist: #9fb8c2;
+  --ink: #eaf3f0;
+  --danger: #ff6b6b;
+  --panel: rgba(9, 16, 26, 0.86);
+  --font-display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --font-body: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+html, body { min-height: 100%; }
+body {
+  background: var(--night);
+  color: var(--ink);
+  font-family: var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.stage {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 9 / 14;
+  max-height: calc(100vh - 120px);
+  min-height: 300px;
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(159, 184, 194, 0.14);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+canvas { display: block; width: 100%; height: 100%; }
+.overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px; background: rgba(6, 10, 18, 0.5); }
+.overlay[hidden] { display: none; }
+.title { font-family: var(--font-display); font-weight: 700; font-size: 2.1rem; background: linear-gradient(90deg, #f4d35e, #ff9f43, #f4d35e); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 12px rgba(0,0,0,.6)); animation: shine 5s linear infinite; }
+@keyframes shine { to { background-position: -200% 0; } }
+.panel.wide { width: min(100%, 320px); }
+.statgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; width: 100%; font-size: 0.74rem; text-align: left; color: var(--mist); margin-bottom: 4px; }
+.statgrid b { display: block; font-size: 1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.statgrid .span2 { grid-column: 1 / -1; }
+.achlist { width: 100%; max-height: 118px; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; text-align: left; font-size: 0.8rem; margin-bottom: 8px; touch-action: pan-y; overscroll-behavior: contain; }
+.achi { display: flex; gap: 8px; align-items: flex-start; opacity: 0.45; }
+.achi.on { opacity: 1; }
+.achi i { font-style: normal; width: 18px; flex: none; text-align: center; color: var(--glow); }
+.achi small { display: block; color: var(--mist); font-size: 0.72rem; }
+.rankbox { display: flex; flex-direction: column; align-items: center; gap: 5px; margin-top: 2px; width: 100%; }
+.xpbar { width: min(100%, 250px); height: 6px; border-radius: 3px; background: rgba(255,255,255,0.14); overflow: hidden; }
+.xpbar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #f4d35e, #ff9f43); transition: width 0.6s; }
+#prof { background: rgba(6, 10, 18, 0.92); padding: 10px; }
+#prof .panel { max-height: 100%; overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain; padding: 16px 16px 12px; }
+#pClose { position: sticky; bottom: 0; flex: none; }
+#prof .achlist { max-height: none; overflow: visible; }
+.mrow { display: flex; gap: 10px; width: 100%; max-width: 290px; margin-top: 6px; }
+.mrow button { flex: 1; }
+.hint { max-width: 290px; color: var(--ink); line-height: 1.4; text-shadow: 0 1px 8px rgba(0,0,0,.8); }
+.legend { display: flex; flex-direction: column; gap: 7px; margin-top: 6px; font-size: 0.82rem; color: var(--mist); text-align: left; max-width: 290px; }
+.lg { display: flex; align-items: center; gap: 10px; }
+.lgi { flex: none; width: 26px; text-align: center; font-weight: 700; color: var(--ink); display: inline-flex; justify-content: center; }
+.pick { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; margin-top: 6px; width: 100%; }
+.pick .plabel { font-size: 0.8rem; color: var(--mist); }
+.lvgrid { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 100%; max-width: 290px; max-height: 128px; overflow-y: auto; padding: 2px; overscroll-behavior: contain; touch-action: pan-y; }
+.lvb { min-width: 0 !important; padding: 5px 0 !important; min-height: 40px; font-size: 0.85rem; line-height: 1.15; font-weight: 600; }
+.lvb small { display: block; font-size: 0.62rem; opacity: 0.85; letter-spacing: 1px; }
+.lvb.sel { background: var(--glow); color: #2a2200; }
+.pick[hidden] { display: none; }
+.go { font-family: var(--font-display); font-weight: 600; margin-top: 12px; color: var(--glow); animation: pulse 1.6s ease-in-out infinite; }
+.panel { background: var(--panel); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: 20px; padding: 22px 22px 20px; width: min(100%, 300px); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.label { color: var(--mist); font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; }
+.big { font-family: var(--font-display); font-weight: 700; font-size: 3.2rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.best { color: var(--glow); font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+.meta { color: var(--mist); font-size: 0.85rem; margin-bottom: 10px; }
+.row { display: flex; gap: 10px; width: 100%; }
+button { font: inherit; color: var(--ink); cursor: pointer; border: 0; border-radius: 14px; padding: 12px 14px; background: rgba(159, 184, 194, 0.16); min-height: 44px; }
+button:hover { background: rgba(159, 184, 194, 0.26); }
+button:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.primary { flex: 1; background: var(--glow); color: #2a2200; font-weight: 600; box-shadow: 0 4px 0 #b99a2c; }
+.primary:hover { background: #f9dc74; }
+.secondary { flex: 1; }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.controls button { min-width: 84px; padding: 12px 10px; flex: 1 1 0; max-width: 140px; }
+.toast { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--panel); padding: 8px 14px; border-radius: 999px; font-size: 0.85rem; pointer-events: none; opacity: 0; transition: opacity 0.2s; }
+.toast.show { opacity: 1; }
+footer { color: var(--mist); font-size: 0.8rem; text-align: center; max-width: 420px; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+@media (prefers-reduced-motion: reduce) { .go { animation: none; } }
+</style>
+
+<div class="stage" id="stage">
+  <canvas id="cv" aria-label="Игровое поле"></canvas>
+  <div class="overlay" id="ready">
+    <div class="title" id="ttl"></div>
+    <div class="hint" id="hint"></div>
+    <div class="legend" id="legend"></div>
+    <div class="mrow"><button class="primary" id="play"></button><button class="secondary" id="profR"></button></div>
+    <div class="go" id="go"></div>
+  </div>
+  <div class="overlay" id="over" hidden>
+    <div class="panel">
+      <div class="label" id="lblScore"></div>
+      <div class="big" id="finalScore">0</div>
+      <div class="best" id="bestText"></div>
+      <div class="meta" id="lvlText"></div>
+      <div class="meta" id="gainText" style="line-height:1.5"></div>
+      <div class="row">
+        <button class="primary" id="again"></button>
+        <button class="secondary" id="share"></button>
+      </div>
+      <button class="secondary" id="profO" style="width:100%"></button>
+    </div>
+  </div>
+  <div class="overlay" id="prof" hidden>
+    <div class="panel wide">
+      <div class="label" id="pTitle"></div>
+      <div class="statgrid" id="pStats"></div>
+      <div class="label" id="pAchT"></div>
+      <div class="achlist" id="pAch"></div>
+      <button class="primary" id="pClose" style="width:100%"></button>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+</div>
+<div class="controls">
+  <button id="pause"></button>
+  <button id="mute"></button>
+  <button id="lang"></button>
+</div>
+<footer id="foot"></footer>
+
+<script>
+(function () {
+  var W = 360, H = 560, PY = 512, PH = 12, COLS = 9, BW = 36, BH = 16, GAP = 3, OX = 6, OY = 96, CEIL = 54;
+  var STEP = 1 / 120;
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+  function rand(a, b) { return a + Math.random() * (b - a); }
+  function ri(a, b) { return Math.floor(rand(a, b + 1)); }
+  function outCubic(t) { t = 1 - clamp(t, 0, 1); return 1 - t * t * t; }
+  function $(id) { return document.getElementById(id); }
+
+  /* ---------- text ---------- */
+  var T = {
+    ru: {
+      title: 'Кирпичики', hint: 'Води платформу пальцем и разбивай кирпичи. Жизнь одна. В кирпичах спрятаны множители очков: разбей такой кирпич, и он включится на 12 секунд.',
+      go: 'Веди пальцем, чтобы целиться. Отпусти, и мяч полетит', score: 'Счёт', best: 'Рекорд', again: 'Ещё раз', share: 'Поделиться',
+      mute: 'Звук выкл.', unmute: 'Звук вкл.', pause: 'Пауза', resume: 'Играть', lang: 'Русский', copied: 'Результат скопирован',
+      foot: 'Управление: палец, мышь или стрелки. Перед запуском целься пальцем, мышью или стрелками, пробел запускает мяч.', level: 'Уровень', lvl: 'УР',
+      clear: 'Уровень пройден', over: 'GAME OVER', paused: 'ПАУЗА', reached: 'Дошёл до уровня',
+      bShrink: 'УМЕНЬШЕНИЕ', bSpeed: 'УСКОРЕНИЕ', pShrink: 'Уменьшение', pSpeed: 'Ускорение',
+      legend: ['×0.1 (1 шт.) и ×0.2 (2 шт.): два нижних ряда', '×0.3 (3 шт.) и ×0.4 (4 шт.): средние ряды', '×0.5 (5 шт.): самый верхний ряд, самый большой'],
+      startFrom: 'Выбери уровень', combo: 'Комбо', record: 'Новый рекорд!', rankUp: 'НОВЫЙ РАНГ', questHead: 'ЗАДАНИЕ ВЫПОЛНЕНО', dailyT: 'Задания дня', streak: 'Серия дней', rank: 'Ранг', xpTo: 'до ранга', nearRec: 'До рекорда не хватило', pts: 'очков', worldL: 'МИР',
+      ranks: ['Новичок', 'Ученик', 'Игрок', 'Знаток', 'Мастер', 'Эксперт', 'Чемпион', 'Легенда', 'Титан', 'Бессмертный'],
+      worlds: ['Рассвет', 'Неон', 'Кристаллы', 'Лава', 'Галактика', 'Лёд', 'Золото', 'Бездна', 'Радуга', 'Вечность'],
+      callouts: ['СЕРИЯ ×10!', 'ОГОНЬ ×20!', 'НЕВЕРОЯТНО ×30!'],
+      q: { bricks: 'Разбей {n} кирпичей', level: 'Дойди до {n}-го уровня', mults: 'Включи {n} множителей', combo: 'Сделай комбо {n}', clears: 'Пройди {n} уровней' }, play: 'Играть', profile: 'Профиль', close: 'Закрыть', stats: 'Статистика', ach: 'Достижения', achGot: 'ДОСТИЖЕНИЕ', tierGot: 'НОВАЯ ПЛАТФОРМА',
+      stG: 'Игр сыграно', stB: 'Кирпичей разбито', stS: 'Лучший счёт', stL: 'Лучший уровень', stC: 'Лучшее комбо', stT: 'Время в игре', stCl: 'Уровней пройдено', stP: 'Платформа',
+      tiers: ['Классика', 'Бронза', 'Серебро', 'Аметист', 'Платина'], tierNext: 'дальше с уровня', winT: 'Игра пройдена!', winS: 'Все 100 уровней позади', musicOn: 'Музыка вкл.', musicOff: 'Музыка выкл.', top: 'Лучшие игры', next: 'Дальше', tapNext: 'Коснись, чтобы продолжить', bonusLbl: 'Бонус',
+      diff: ['Очень лёгкий', 'Лёгкий', 'Чуть сложнее', 'Средний', 'Выше среднего', 'Сложный', 'Очень сложный', 'Эксперт', 'Кошмар', 'Невозможный'],
+      shareText: function (s, l, b) { return 'Кирпичики: ' + s + ' очков, уровень ' + l + '. Мой рекорд ' + b + '.'; }
+    },
+    en: {
+      title: 'Bricks', hint: 'Drag the paddle and smash the bricks. One life only. Score multipliers are hidden inside the bricks: break one and it kicks in for 12 seconds.',
+      go: 'Drag to aim. Release to launch', score: 'Score', best: 'Best', again: 'Play again', share: 'Share score',
+      mute: 'Mute', unmute: 'Unmute', pause: 'Pause', resume: 'Resume', lang: 'English', copied: 'Score copied',
+      foot: 'Controls: finger, mouse or arrow keys. Aim before launch with finger, mouse or arrows; Space launches.', level: 'Level', lvl: 'LV',
+      clear: 'Level clear', over: 'GAME OVER', paused: 'PAUSED', reached: 'Reached level',
+      bShrink: 'SHRINK', bSpeed: 'SPEED UP', pShrink: 'Shrink', pSpeed: 'Speed up',
+      legend: ['×0.1 (1) and ×0.2 (2): the two bottom rows', '×0.3 (3) and ×0.4 (4): the middle rows', '×0.5 (5): the topmost row, the biggest'],
+      startFrom: 'Choose a level', combo: 'Combo', record: 'New record!', rankUp: 'NEW RANK', questHead: 'QUEST COMPLETE', dailyT: 'Daily quests', streak: 'Day streak', rank: 'Rank', xpTo: 'to rank', nearRec: 'Missed the record by', pts: 'points', worldL: 'WORLD',
+      ranks: ['Rookie', 'Student', 'Player', 'Expert', 'Master', 'Pro', 'Champion', 'Legend', 'Titan', 'Immortal'],
+      worlds: ['Dawn', 'Neon', 'Crystals', 'Lava', 'Galaxy', 'Ice', 'Gold', 'Abyss', 'Rainbow', 'Eternity'],
+      callouts: ['STREAK ×10!', 'ON FIRE ×20!', 'INCREDIBLE ×30!'],
+      q: { bricks: 'Break {n} bricks', level: 'Reach level {n}', mults: 'Trigger {n} multipliers', combo: 'Make a {n} combo', clears: 'Clear {n} levels' }, play: 'Play', profile: 'Profile', close: 'Close', stats: 'Statistics', ach: 'Achievements', achGot: 'ACHIEVEMENT', tierGot: 'NEW PADDLE',
+      stG: 'Games played', stB: 'Bricks broken', stS: 'Best score', stL: 'Best level', stC: 'Best combo', stT: 'Time played', stCl: 'Levels cleared', stP: 'Paddle',
+      tiers: ['Classic', 'Bronze', 'Silver', 'Amethyst', 'Platinum'], tierNext: 'next at level', winT: 'Game complete!', winS: 'All 100 levels cleared', musicOn: 'Music on', musicOff: 'Music off', top: 'Best runs', next: 'Next', tapNext: 'Tap to continue', bonusLbl: 'Bonus',
+      diff: ['Very easy', 'Easy', 'A bit harder', 'Medium', 'Above medium', 'Hard', 'Very hard', 'Expert', 'Nightmare', 'Impossible'],
+      shareText: function (s, l, b) { return 'Bricks: ' + s + ' points, level ' + l + '. My best is ' + b + '.'; }
+    }
+  };
+  var lang = 'ru';
+  try { var sl = localStorage.getItem('bricks.lang'); if (sl && T[sl]) lang = sl; else if ((navigator.language || '').slice(0, 2) !== 'ru') lang = 'en'; } catch (e) {}
+  var best = 0, bestLevel = 1;
+  try { best = parseInt(localStorage.getItem('bricks.best') || '0', 10) || 0; } catch (e) {}
+  var muted = false, paused = false;
+  try { muted = localStorage.getItem('bricks.muted') === '1'; } catch (e) {}
+
+  /* ---------- audio ---------- */
+  var ac = null;
+  function audio() {
+    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; } }
+    if (ac && ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(f1, f2, dur, type, vol, delay) {
+    if (muted) return; var a = audio(); if (!a) return;
+    var o = a.createOscillator(), gn = a.createGain(), n = a.currentTime + (delay || 0);
+    o.type = type; o.frequency.setValueAtTime(f1, n); o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), n + dur);
+    gn.gain.setValueAtTime(vol, n); gn.gain.exponentialRampToValueAtTime(0.0001, n + dur);
+    o.connect(gn); gn.connect(a.destination); o.start(n); o.stop(n + dur + 0.02);
+  }
+  var S = {
+    paddle: function () { tone(280, 420, 0.07, 'triangle', 0.13); },
+    wall: function () { tone(200, 240, 0.04, 'sine', 0.07); },
+    brick: function (c) { tone(480 + Math.min(c, 18) * 38, 700 + Math.min(c, 18) * 50, 0.08, 'square', 0.06); },
+    hit: function () { tone(220, 180, 0.06, 'square', 0.06); },
+    steel: function () { tone(900, 700, 0.05, 'triangle', 0.08); },
+    pup: function () { tone(520, 1040, 0.16, 'sine', 0.15); tone(780, 1560, 0.16, 'sine', 0.1, 0.07); },
+    lose: function () { tone(300, 70, 0.5, 'sawtooth', 0.15); },
+    shrink: function () { tone(1100, 320, 0.28, 'sine', 0.14); tone(1500, 500, 0.24, 'triangle', 0.08, 0.05); },
+    fast: function () { tone(260, 1300, 0.26, 'sawtooth', 0.09); tone(520, 1800, 0.22, 'triangle', 0.08, 0.06); },
+    thud: function () { tone(120, 60, 0.12, 'square', 0.1); },
+    win: function () { tone(523, 523, 0.12, 'triangle', 0.15); tone(659, 659, 0.12, 'triangle', 0.15, 0.12); tone(784, 784, 0.12, 'triangle', 0.15, 0.24); tone(1047, 1047, 0.3, 'triangle', 0.15, 0.36); }
+  };
+  function vib(ms) { try { if (navigator.vibrate && !muted) navigator.vibrate(ms); } catch (e) {} }
+
+  /* ---------- canvas ---------- */
+  var cv = $('cv'), ctx = cv.getContext('2d'), dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = W * dpr; cv.height = H * dpr;
+  function rr(c, x, y, w, h, r) { c.beginPath(); if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h); }
+  function circ(c, x, y, r, col) { c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, 6.2832); c.fill(); }
+  function txt(c, s, x, y, size, col, al) {
+    c.font = '700 ' + size + 'px Unbounded, Arial Black, sans-serif'; c.textAlign = al || 'center'; c.textBaseline = 'middle';
+    c.lineWidth = Math.max(3, size / 6); c.lineJoin = 'round'; c.strokeStyle = 'rgba(6,10,18,0.7)'; c.strokeText(s, x, y);
+    c.fillStyle = col || '#eaf3f0'; c.fillText(s, x, y);
+  }
+  function glow(c, x, y, r, col, a) {
+    var g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.globalAlpha = a == null ? 1 : a; c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); c.globalAlpha = 1;
+  }
+
+  function icon(c, kind, x, y, s, col) {
+    c.save(); c.translate(x, y); c.fillStyle = col; c.strokeStyle = col; c.lineCap = 'round'; c.lineJoin = 'round';
+    if (kind === 'shrink') {
+      c.lineWidth = Math.max(1.4, s * 0.22);
+      for (var i = 0; i < 4; i++) {
+        c.save(); c.rotate(i * Math.PI / 2);
+        c.beginPath(); c.moveTo(0, -s); c.lineTo(0, -s * 0.45); c.stroke();
+        c.beginPath(); c.moveTo(-s * 0.33, -s * 0.56); c.lineTo(s * 0.33, -s * 0.56); c.lineTo(0, -s * 0.14); c.closePath(); c.fill();
+        c.restore();
+      }
+    } else {
+      c.beginPath(); c.moveTo(s * 0.25, -s); c.lineTo(-s * 0.45, s * 0.1); c.lineTo(-s * 0.02, s * 0.1); c.lineTo(-s * 0.25, s); c.lineTo(s * 0.5, -s * 0.2); c.lineTo(s * 0.05, -s * 0.2); c.closePath(); c.fill();
+    }
+    c.restore();
+  }
+
+  /* ---------- game state ---------- */
+  var mode = 'ready'; // ready | play | clear | dead | over
+  var level, score, lives, combo, maxCombo;
+  var bricks, balls, pups, parts, floats, stars = [];
+  var px = W / 2, tx = W / 2, pw = 92;
+  var mulV = 1, mulT = 0, MCOL = { 0.1: '#9aa4b2', 0: '#e05a5a', 0.2: '#b9a77a', 0.3: '#d09a6a', 0.4: '#9bd45a', 0.5: '#4aa3df' }, LADDER = [0.1, 0.2, 0.3, 0.4, 0.5], MVALS = [0.1, 0, 0.2, 0.3, 5];
+  var heat = 0, descT = 0, lowY = 0, lvT = 0, lvTotal = 0, clearBonus = 0, clearStars = 3, LP = null, LD = null;
+  var shrinkT = 0, speedT = 0, shrinkK = 0, speedK = 0, actAnim = 0, actKind = 'shrink', rings = [];
+  /* hidden ball bonuses: instant, timed, only one active at a time */
+  var BB = { small: { col: '#5ad1ff', ico: '\u2212', ru: 'Малый шар', en: 'Small ball' }, big: { col: '#ff7ac8', ico: '+', ru: 'Большой шар', en: 'Big ball' }, slow: { col: '#7dffb0', ico: 'S', ru: 'Медленный шар', en: 'Slow ball' }, wide: { col: '#ffd166', ico: '\u2194', ru: 'Широкая платформа', en: 'Wide paddle' } }, BBKEYS = ['small', 'big', 'slow', 'wide'], bbKind = null, bbT = 0, BB_DUR = 12;
+  var BCOL = { shrink: '#5ad1ff', speed: '#ff9f43' }, SHRINK_DUR = 10, SPEED_DUR = 9;
+  var startLevel = 1, unlocked = 1, padSq = 0, finishing = false, slowT = 0, gameMults = 0, callT = 0, callTxt = '', musicT = 0, musicI = 0, starMap = {}, musicOn = true, prevBest = 0, newRec = false;
+  try { musicOn = localStorage.getItem('bricks.music') !== '0'; } catch (e) {}
+  try { starMap = JSON.parse(localStorage.g
